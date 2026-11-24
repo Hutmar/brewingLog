@@ -41,7 +41,49 @@ sudo apt install python3-fastapi uvicorn python3-jinja2 python3-multipart \
 sudo apt install python3-pytest python3-httpx python3-coverage
 ```
 
-The `uvicorn` package provides `/usr/bin/uvicorn`; `python3-starlette` and `python3-pydantic` are installed as dependencies. See `brewinglog.service` for running it as a systemd service.
+The `uvicorn` package provides `/usr/bin/uvicorn`; `python3-starlette` and `python3-pydantic` are installed as dependencies.
+
+### Running as a systemd service (WSL Debian)
+
+The unit file `brewinglog.service` starts the application automatically. systemd must be enabled in WSL (`/etc/wsl.conf` contains `[boot]` with `systemd=true`).
+
+1. Clone the repository and create the configuration:
+
+   ```bash
+   mkdir -p ~/projects && cd ~/projects
+   git clone https://github.com/<github-user>/brewingLog.git
+   cd brewingLog
+   cp .env.example .env
+   nano .env      # set DATABASE_URL (host 127.0.0.1, password of the role brauprotokoll)
+   ```
+
+2. Adjust `brewinglog.service` if needed. It assumes the user `reini`, the directory `/home/reini/projects/brewingLog`, `/usr/bin/uvicorn` and port 8010 (port 8000 is used by another application). `--host 0.0.0.0` makes the application reachable from other devices in the network; use `127.0.0.1` if only local access is wanted, because the application has no login.
+
+3. Install and start the service:
+
+   ```bash
+   sudo cp brewinglog.service /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now brewinglog
+   ```
+
+4. Check the service:
+
+   ```bash
+   systemctl status brewinglog
+   journalctl -u brewinglog -f
+   ```
+
+The application is then available at `http://<host>:8010/`. The database migrations run automatically on every start. If the database is not reachable or a migration fails, the service logs the error and is restarted every 5 seconds until the problem is fixed.
+
+Update after changes in the repository:
+
+```bash
+cd ~/projects/brewingLog && git pull
+sudo systemctl restart brewinglog
+```
+
+Other useful commands: `sudo systemctl stop brewinglog`, `sudo systemctl disable brewinglog` (no start at boot).
 
 ## Start
 
