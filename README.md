@@ -1,46 +1,47 @@
-# Brauprotokoll
+# Brauprotokoll (Brewing Log)
 
-Schlanke Webanwendung zur Dokumentation von Bierbrauvorgängen (Protokoll) und zur Verwaltung der Rohstoffe.
-Technik: Python, FastAPI, HTMX, Jinja2, SQLAlchemy, Alembic, PostgreSQL.
+A lean web application for documenting beer brewing sessions (brewing log) and managing the ingredients used.
+Stack: Python, FastAPI, HTMX, Jinja2, SQLAlchemy, Alembic, PostgreSQL.
+The user interface and the URLs (`/protokoll`, `/rohstoffe`) are in German.
 
-## Voraussetzungen
+## Requirements
 
-- Python 3.12 oder neuer
-- PostgreSQL (primär vorgesehen; die Anwendung nutzt nur portable SQLAlchemy-Funktionen)
+- Python 3.12 or newer
+- PostgreSQL (the primary target; the application only uses portable SQLAlchemy features)
 
-## Einrichtung
+## Setup
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt
 ```
 
-Datenbank und Benutzer anlegen (Beispiel, Passwort anpassen):
+Create the database and user (example, adjust the password):
 
 ```sql
-CREATE ROLE brauprotokoll LOGIN PASSWORD 'geheim';
+CREATE ROLE brauprotokoll LOGIN PASSWORD 'secret';
 CREATE DATABASE brauprotokoll OWNER brauprotokoll ENCODING 'UTF8' TEMPLATE template0;
 ```
 
-Konfiguration: `.env.example` nach `.env` kopieren und anpassen. Die Werte können alternativ als Umgebungsvariablen gesetzt werden.
+Configuration: copy `.env.example` to `.env` and adjust it. The values can alternatively be set as environment variables.
 
-| Variable       | Bedeutung                                                      | Beispiel                                                          |
-|----------------|----------------------------------------------------------------|-------------------------------------------------------------------|
-| `DATABASE_URL` | SQLAlchemy-URL der Datenbank (Pflicht)                         | `postgresql+psycopg://brauprotokoll:geheim@127.0.0.1:5432/brauprotokoll` |
-| `LOG_LEVEL`    | Log-Stufe (optional, Standard `INFO`)                          | `INFO`                                                            |
+| Variable       | Meaning                                         | Example                                                                  |
+|----------------|-------------------------------------------------|--------------------------------------------------------------------------|
+| `DATABASE_URL` | SQLAlchemy URL of the database (required)       | `postgresql+psycopg://brauprotokoll:secret@127.0.0.1:5432/brauprotokoll` |
+| `LOG_LEVEL`    | Log level (optional, defaults to `INFO`)        | `INFO`                                                                   |
 
-Hinweis: Läuft PostgreSQL unter WSL, ist für den Zugriff von Windows aus `networkingMode=mirrored` in `%USERPROFILE%\.wslconfig` hilfreich. Als Host `127.0.0.1` statt `localhost` verwenden, damit keine IPv6-Verbindung versucht wird.
+Note: If PostgreSQL runs in WSL, `networkingMode=mirrored` in `%USERPROFILE%\.wslconfig` helps to reach it from Windows. Use `127.0.0.1` as host instead of `localhost` so that no IPv6 connection is attempted.
 
-### Betrieb unter Debian 13 mit Systempaketen (ohne pip)
+### Running on Debian 13 with system packages (without pip)
 
 ```bash
 sudo apt install python3-fastapi uvicorn python3-jinja2 python3-multipart \
     python3-sqlalchemy python3-alembic python3-psycopg python3-pydantic-settings
-# nur für die Tests:
+# only for the tests:
 sudo apt install python3-pytest python3-httpx python3-coverage
 ```
 
-`uvicorn` stellt `/usr/bin/uvicorn` bereit, `python3-starlette` und `python3-pydantic` kommen als Abhängigkeiten mit. Als systemd-Dienst siehe `brewinglog.service`.
+The `uvicorn` package provides `/usr/bin/uvicorn`; `python3-starlette` and `python3-pydantic` are installed as dependencies. See `brewinglog.service` for running it as a systemd service.
 
 ## Start
 
@@ -48,11 +49,11 @@ sudo apt install python3-pytest python3-httpx python3-coverage
 .\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Danach ist die Anwendung unter <http://127.0.0.1:8000/> erreichbar. Für die Entwicklung kann `--reload` ergänzt werden.
+The application is then available at <http://127.0.0.1:8000/>. Add `--reload` during development.
 
-Beim Start prüft die Anwendung, ob Datenbankmigrationen ausstehen, und führt sie automatisch aus. Schlägt eine Migration fehl, bricht der Start mit einer Fehlermeldung ab. Bestehende Daten werden nicht gelöscht, das Schema wird nicht neu erstellt.
+On startup the application checks for pending database migrations and runs them automatically. If a migration fails, startup is aborted with an error message. Existing data is never deleted and the schema is never recreated.
 
-Die Anwendung hat keine Benutzerverwaltung und keine Anmeldung; sie ist für den persönlichen Einsatz im eigenen Netz gedacht und sollte nicht ungeschützt im Internet betrieben werden.
+The application has no user management and no login. It is intended for personal use in a private network and should not be exposed to the internet unprotected.
 
 ## Tests
 
@@ -61,49 +62,49 @@ Die Anwendung hat keine Benutzerverwaltung und keine Anmeldung; sie ist für den
 .\.venv\Scripts\python -m pytest
 ```
 
-Die datenbankabhängigen Tests laufen einmal mit SQLite und einmal mit PostgreSQL (in einem temporären Schema der konfigurierten Datenbank, das danach gelöscht wird). Ist PostgreSQL nicht erreichbar, werden die PostgreSQL-Läufe übersprungen.
+The database-dependent tests run once with SQLite and once with PostgreSQL (in a temporary schema of the configured database, which is dropped afterwards). If PostgreSQL is not reachable, the PostgreSQL runs are skipped.
 
-Testabdeckung: `python -m coverage run --source=app -m pytest` und anschließend `python -m coverage report`.
+Test coverage: `python -m coverage run --source=app -m pytest`, then `python -m coverage report`.
 
-## Aufbau
+## Structure
 
 ```
 app/
-  main.py            Einstiegspunkt, Start-Migration, Fehlerseiten
-  config.py          Einstellungen aus Umgebungsvariablen
-  db.py              Engine und Sessions
-  models.py          SQLAlchemy-Modelle (Namen wie in brauprotokoll.sql)
-  migrate.py         Automatische Alembic-Migration
-  parsing.py         Zahleneingaben mit Komma oder Punkt
-  formatting.py      Anzeigeformate (deutsches Datum und Dezimalkomma)
-  repositories/      Datenbankzugriff
-  services/          Fachlogik (calculations.py enthält alle Berechnungen)
-  routers/           Seiten und HTMX-Fragmente
-  templates/         Jinja2-Templates (ohne Fachlogik, ohne Datenbankzugriff)
-  static/            htmx.min.js (lokal) und style.css
-migrations/          Versionierte Alembic-Migrationen
-tests/               Automatische Tests
+  main.py            Entry point, startup migration, error pages
+  config.py          Settings from environment variables
+  db.py              Engine and sessions
+  models.py          SQLAlchemy models (names as in brauprotokoll.sql)
+  migrate.py         Automatic Alembic migration
+  parsing.py         Number input with comma or dot
+  formatting.py      Display formats (German date and decimal comma)
+  repositories/      Database access
+  services/          Business logic (calculations.py contains all calculations)
+  routers/           Pages and HTMX fragments
+  templates/         Jinja2 templates (no business logic, no database access)
+  static/            htmx.min.js (local) and style.css
+migrations/          Versioned Alembic migrations
+tests/               Automated tests
 ```
 
-## Funktionsumfang
+## Features
 
-**Protokoll** (`/protokoll`): Übersicht der Sude (nach Braudatum absteigend), Detailansicht mit gruppierten Daten, Anlegen, Bearbeiten und Löschen (mit Bestätigung). Rezeptnamen werden aus bisherigen Suden vorgeschlagen, die Hefe wird aus den Rohstoffen der Art „Hefe“ gewählt. Je Sud gibt es eine Bewertung (1–10) mit Geschmacksbeschreibung.
+**Brewing log** (`/protokoll`): overview of all brews (newest first), detail view with grouped data, create, edit and delete (with confirmation). Recipe names are suggested from previous brews, the yeast is chosen from the ingredients of type "Hefe" (yeast). Each brew has one rating (1–10) with a taste description.
 
-**Berechnungen** (`app/services/calculations.py`, Formeln aus der früheren Excel-Datei):
+**Calculations** (`app/services/calculations.py`, formulas taken from the former Excel sheet):
 
-- Alkoholgehalt vor Nachgärung aus Stammwürze nach Kochen und bei Abfüllung
-- Verdünnungsmenge, Abfüllmenge
-- Alkoholgehalt nach Nachgärung (= Soll-Alkohol)
-- Zucker pro 0,5-l- und 0,33-l-Flasche, Zucker gesamt
-- Zieldruck
-- Dauer Hauptgärung, Reifungsdauer und Gesamtdauer (nur Anzeige)
+- Alcohol before secondary fermentation from the gravity after boiling and at bottling
+- Dilution volume and bottling volume
+- Alcohol after secondary fermentation (= target alcohol)
+- Sugar per 0.5 l and 0.33 l bottle, total sugar
+- Target pressure
+- Duration of main fermentation, maturation and total duration (display only)
 
-Berechnete Werte werden im Formular live angezeigt. Bleibt ein Feld mit „Berechnet“-Hinweis leer, wird der berechnete Wert gespeichert; ein eingegebener Wert hat Vorrang. Zucker pro Flasche, Zieldruck und Dauern werden nicht gespeichert.
+Calculated values are shown live in the form. If a field with a "Berechnet" (calculated) hint is left empty, the calculated value is stored; an entered value takes precedence. Sugar per bottle, target pressure and durations are not stored.
 
-**Rohstoffe** (`/rohstoffe`): gemeinsame Verwaltung aller Rohstoffarten (Malz, Hopfen, Hefe oder frei eingegeben) mit Filter nach Art, dynamischen Eigenschaften (Name, Datentyp, Wert), Bestand in kg und Änderungsdatum. Vorschläge für Eigenschaftsnamen und Datentypen stammen aus bestehenden Rohstoffen derselben Art. Ein Rohstoff, der in einem Sud als Hefe verwendet wird, kann nicht gelöscht werden.
+**Ingredients** (`/rohstoffe`): common management of all ingredient types (malt, hops, yeast or free input) with a filter by type, dynamic attributes (name, data type, value), stock in kg and change date. Suggestions for attribute names and data types come from existing ingredients of the same type. An ingredient that is used as yeast in a brew cannot be deleted.
 
-Nicht Teil der Anwendung: Rezeptverwaltung, Gärverlauf, Wasserverwaltung, Kosten, Statistiken, Mehrbenutzerbetrieb, Lagerbuchungen, Einkauf, Excel-Import (die Altdaten werden manuell erfasst).
+Not part of the application: recipe management, fermentation tracking, water management, costs, statistics, multi-user operation, stock bookings, purchasing, Excel import (the legacy data is entered manually).
 
-## Datenmodell
+## Data model
 
-`brauprotokoll.sql` ist die verbindliche Grundlage; Tabellen- und Spaltennamen sind unverändert übernommen. Da die DDL reine `INTEGER PRIMARY KEY`-Spalten ohne automatische ID-Vergabe definiert, legt die erste Migration je Tabelle eine Sequence an, über die die Anwendung die IDs vergibt.
+`brauprotokoll.sql` is the binding basis; table and column names are used unchanged. Because the DDL defines plain `INTEGER PRIMARY KEY` columns without automatic ID generation, the first migration creates one sequence per table, which the application uses to assign IDs.
