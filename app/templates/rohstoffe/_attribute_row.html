@@ -1,0 +1,13 @@
+<div class="attr-row{{ ' has-error' if attr.error }}">
+  <label>Name
+    <input type="text" name="attr_name" value="{{ attr.name }}" list="dl-attr-names" maxlength="255">
+  </label>
+  <label>Datentyp
+    <input type="text" name="attr_datatype" value="{{ attr.datatype }}" list="dl-attr-datatypes" maxlength="50">
+  </label>
+  <label>Wert
+    <input type="text" name="attr_value" value="{{ attr.value }}" maxlength="255">
+  </label>
+  <button type="button" class="danger" hx-on:click="this.closest('.attr-row').remove()">Entfernen</button>
+  {% if attr.error %}<p class="field-error">{{ attr.error }}</p>{% endif %}
+</div>

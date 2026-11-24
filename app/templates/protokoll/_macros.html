@@ -1,0 +1,22 @@
+{# Imported "with context": uses values, errors and required from the page. #}
+{% macro number(name, label, unit='', hint=False) %}
+<label>{{ label }}{% if unit %} ({{ unit }}){% endif %}{% if name in required %} *{% endif %}
+  <input type="text" inputmode="decimal" name="{{ name }}" value="{{ values.get(name, '') }}">
+  {% if hint %}<span class="calc-hint" id="hint-{{ name }}"></span>{% endif %}
+  {% if errors.get(name) %}<span class="field-error">{{ errors[name] }}</span>{% endif %}
+</label>
+{% endmacro %}
+
+{% macro date_field(name, label) %}
+<label>{{ label }}{% if name in required %} *{% endif %}
+  <input type="date" name="{{ name }}" value="{{ values.get(name, '') }}">
+  {% if errors.get(name) %}<span class="field-error">{{ errors[name] }}</span>{% endif %}
+</label>
+{% endmacro %}
+
+{% macro textarea(name, label, maxlength) %}
+<label>{{ label }}
+  <textarea name="{{ name }}" rows="3" maxlength="{{ maxlength }}">{{ values.get(name, '') }}</textarea>
+  {% if errors.get(name) %}<span class="field-error">{{ errors[name] }}</span>{% endif %}
+</label>
+{% endmacro %}

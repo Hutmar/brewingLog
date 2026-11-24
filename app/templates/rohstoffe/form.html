@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Rohstoff bearbeiten' if ingredient_id else 'Neuer Rohstoff' }} – Brauprotokoll{% endblock %}
+{% block content %}
+<h1>{{ 'Rohstoff bearbeiten' if ingredient_id else 'Neuer Rohstoff' }}</h1>
+
+{% if errors._general %}<div class="flash error" role="alert">{{ errors._general }}</div>{% endif %}
+
+<form method="post" action="{{ '/rohstoffe/' ~ ingredient_id if ingredient_id else '/rohstoffe' }}" class="form"
+      hx-disabled-elt="find button[type=submit]">
+  <fieldset>
+    <legend>Allgemein</legend>
+    <label>Rohstoffart
+      <input type="text" name="ingredient_type" value="{{ data.ingredient_type }}" list="dl-types"
+             maxlength="20" required autocomplete="off"
+             hx-get="/rohstoffe/vorschlaege" hx-trigger="change" hx-target="#suggestions"
+             hx-swap="innerHTML" hx-params="ingredient_type">
+      {% if errors.ingredient_type %}<span class="field-error">{{ errors.ingredient_type }}</span>{% endif %}
+    </label>
+    <label>Bezeichnung
+      <input type="text" name="name" value="{{ data.name }}" maxlength="100" required {{ 'autofocus' if not ingredient_id and data.ingredient_type }}>
+      {% if errors.name %}<span class="field-error">{{ errors.name }}</span>{% endif %}
+    </label>
+    <label>Bestand (kg)
+      <input type="text" name="stock" value="{{ data.stock }}" inputmode="decimal">
+      {% if errors.stock %}<span class="field-error">{{ errors.stock }}</span>{% endif %}
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Eigenschaften</legend>
+    {% if errors.attributes %}<p class="field-error">{{ errors.attributes }}</p>{% endif %}
+    <div id="attributes">
+      {% for attr in data.attributes %}
+        {% include "rohstoffe/_attribute_row.html" %}
+      {% endfor %}
+    </div>
+    <button type="button" hx-get="/rohstoffe/attribut-zeile" hx-target="#attributes" hx-swap="beforeend">
+      Eigenschaft hinzufügen
+    </button>
+  </fieldset>
+
+  <div id="suggestions">{% include "rohstoffe/_suggestions.html" %}</div>
+
+  <div class="form-actions">
+    <button type="submit" class="primary">Speichern</button>
+    <a class="button secondary" href="/rohstoffe{% if data.ingredient_type %}?art={{ data.ingredient_type | urlencode }}{% endif %}">Abbrechen</a>
+  </div>
+</form>
+{% endblock %}

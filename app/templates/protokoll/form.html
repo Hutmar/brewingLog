@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% import "protokoll/_macros.html" as m with context %}
+{% block title %}{{ 'Sud bearbeiten' if brewing_log_id else 'Neuer Sud' }} – Brauprotokoll{% endblock %}
+{% block content %}
+<h1>{{ 'Sud bearbeiten' if brewing_log_id else 'Neuer Sud' }}</h1>
+
+{% if errors._general %}<div class="flash error" role="alert">{{ errors._general }}</div>{% endif %}
+{% if errors and not errors._general %}<div class="flash error" role="alert">Bitte die markierten Felder korrigieren.</div>{% endif %}
+
+<form method="post" action="{{ '/protokoll/' ~ brewing_log_id if brewing_log_id else '/protokoll' }}" class="form"
+      hx-disabled-elt="find button[type=submit]">
+  <fieldset>
+    <legend>Allgemein</legend>
+    <div class="grid">
+      <label>Rezeptname *
+        <input type="text" name="recipe_name" value="{{ values.get('recipe_name', '') }}" list="dl-recipes"
+               maxlength="255" autocomplete="off" required {{ 'autofocus' if not brewing_log_id }}>
+        {% if errors.recipe_name %}<span class="field-error">{{ errors.recipe_name }}</span>{% endif %}
+      </label>
+      {{ m.date_field('brewing_date', 'Braudatum') }}
+    </div>
+    <datalist id="dl-recipes">
+      {% for name in recipe_names %}<option value="{{ name }}"></option>{% endfor %}
+    </datalist>
+  </fieldset>
+
+  <fieldset>
+    <legend>Stammwürze und Brauprozess</legend>
+    <div class="grid">
+      {{ m.number('plato_target', 'Stammwürze Soll', '°P') }}
+      {{ m.number('plato_before_boiling', 'Stammwürze vor Kochen', '°P') }}
+      {{ m.number('water_addition_boiling', 'Wasserzugabe', 'l') }}
+      {{ m.number('plato_after_boiling', 'Stammwürze nach Kochen', '°P') }}
+      {{ m.number('plato_current', 'Stammwürze bei Abfüllung', '°P') }}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Hefe und Abweichungen</legend>
+    <div class="grid">
+      <label>Hefe *
+        <select name="yeast" required>
+          <option value="">– bitte wählen –</option>
+          {% for y in yeasts %}
+          <option value="{{ y.ingredient_id }}" {{ 'selected' if values.get('yeast') == y.ingredient_id | string }}>{{ y.name }}</option>
+          {% endfor %}
+        </select>
+        {% if not yeasts %}<span class="hint">Noch keine Hefe vorhanden – <a href="/rohstoffe/neu?art=Hefe">Hefe anlegen</a>.</span>{% endif %}
+        {% if errors.yeast %}<span class="field-error">{{ errors.yeast }}</span>{% endif %}
+      </label>
+      {{ m.number('temperature_fermentation', 'Gärtemperatur', '°C') }}
+    </div>
+    {{ m.textarea('deviations', 'Abweichungen vom geplanten Brauverfahren', 2000) }}
+  </fieldset>
+
+  <fieldset>
+    <legend>Alkohol und Verdünnung</legend>
+    <p class="hint">Felder mit „Berechnet“-Hinweis können leer bleiben, dann wird der berechnete Wert gespeichert.</p>
+    <div class="grid">
+      {{ m.number('alcohol_target', 'Alkoholgehalt Soll', '% vol') }}
+      {{ m.number('alcohol_before_sec_fermentation', 'Alkoholgehalt vor Nachgärung', '% vol', hint=True) }}
+      {{ m.number('volume_after_fermentation', 'Menge vor Verdünnung', 'l') }}
+      {{ m.number('water_addition_fermentation', 'Verdünnung', 'l', hint=True) }}
+      {{ m.number('alcohol_after_sec_fermentation', 'Alkoholgehalt nach Nachgärung', '% vol', hint=True) }}
+      {{ m.number('alcohol_current', 'Alkoholgehalt aktuell', '% vol') }}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Geschmack und Karbonisierung</legend>
+    <div class="grid">
+      <label>Bewertung (1–10)
+        <input type="text" inputmode="numeric" name="rating" value="{{ values.get('rating', '') }}" maxlength="2">
+        {% if errors.rating %}<span class="field-error">{{ errors.rating }}</span>{% endif %}
+      </label>
+      {{ m.number('co2_target', 'CO₂ Soll', 'g/l') }}
+      {{ m.number('co2_current', 'CO₂ Ist', 'g/l') }}
+      {{ m.number('pressure_current', 'Druck Ist', 'bar') }}
+      {{ m.number('sugar_total', 'Zucker gesamt', 'g', hint=True) }}
+    </div>
+    {{ m.textarea('remark', 'Geschmackliche Beschreibung', 500) }}
+  </fieldset>
+
+  <fieldset>
+    <legend>Abfüllung und Reifung</legend>
+    <div class="grid">
+      {{ m.number('bottling_volume', 'Abfüllmenge', 'l', hint=True) }}
+      {{ m.date_field('bottling_date', 'Abfülldatum') }}
+      {{ m.date_field('lagering_startdate', 'Reifung Startdatum') }}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Berechnete Werte</legend>
+    <div id="calc-panel"></div>
+    <div hx-post="/protokoll/berechnen" hx-trigger="load, change from:closest form, keyup changed delay:400ms from:closest form"
+         hx-include="closest form" hx-target="#calc-panel" hx-swap="innerHTML"></div>
+  </fieldset>
+
+  <div class="form-actions">
+    <button type="submit" class="primary">Speichern</button>
+    <a class="button secondary" href="{{ '/protokoll/' ~ brewing_log_id if brewing_log_id else '/protokoll' }}">Abbrechen</a>
+  </div>
+</form>
+{% endblock %}

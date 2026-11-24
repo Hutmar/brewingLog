@@ -1,0 +1,15 @@
+{% macro line(label, value) %}
+<div class="dl-row"><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+{% endmacro %}
+{% macro number(value, unit) %}{% if value is none %}–{% else %}{{ value | de }} {{ unit }}{% endif %}{% endmacro %}
+<dl>
+  {{ line("Zucker pro 0,5-l-Flasche", number(calculated.sugar_half, "g")) }}
+  {{ line("Zucker pro 0,33-l-Flasche", number(calculated.sugar_third, "g")) }}
+  {{ line("Zieldruck", number(calculated.target_pressure, "bar")) }}
+  {{ line("Dauer Hauptgärung", number(calculated.main_fermentation_days, "Tage")) }}
+  {{ line("Dauer Reifung", number(calculated.maturation_days, "Tage")) }}
+  {{ line("Dauer gesamt", number(calculated.total_days, "Tage")) }}
+</dl>
+{% for name, text in hints.items() %}
+<span class="calc-hint" id="hint-{{ name }}" hx-swap-oob="true">{{ text }}</span>
+{% endfor %}

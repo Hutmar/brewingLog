@@ -1,0 +1,9 @@
+<datalist id="dl-types">
+  {% for t in type_suggestions %}<option value="{{ t }}"></option>{% endfor %}
+</datalist>
+<datalist id="dl-attr-names">
+  {% for n in name_suggestions %}<option value="{{ n }}"></option>{% endfor %}
+</datalist>
+<datalist id="dl-attr-datatypes">
+  {% for d in datatype_suggestions %}<option value="{{ d }}"></option>{% endfor %}
+</datalist>

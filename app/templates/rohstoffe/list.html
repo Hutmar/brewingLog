@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Rohstoffe – Brauprotokoll{% endblock %}
+{% block content %}
+{% set selected = overview.selected %}
+<div class="page-head">
+  <h1>Rohstoffe</h1>
+  <a class="button" href="/rohstoffe/neu{% if selected %}?art={{ selected | urlencode }}{% endif %}">Neuer Rohstoff</a>
+</div>
+
+<nav class="filter" aria-label="Rohstoffart">
+  <a href="/rohstoffe" class="{{ 'active' if not selected }}">Alle</a>
+  {% for t in overview.types %}
+  <a href="/rohstoffe?art={{ t | urlencode }}" class="{{ 'active' if t == selected }}">{{ t }}</a>
+  {% endfor %}
+</nav>
+
+{% if overview.rows %}
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Bezeichnung</th>
+      {% if not selected %}<th>Art</th>{% endif %}
+      {% for c in overview.columns %}<th>{{ c }}</th>{% endfor %}
+      {% if not selected %}<th>Eigenschaften</th>{% endif %}
+      <th>Bestand</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for row in overview.rows %}
+    {% set i = row.ingredient %}
+    <tr>
+      <td><a href="/rohstoffe/{{ i.ingredient_id }}/bearbeiten">{{ i.name }}</a></td>
+      {% if not selected %}<td>{{ i.ingredient_type }}</td>{% endif %}
+      {% for v in row.values %}<td>{{ v }}</td>{% endfor %}
+      {% if not selected %}<td>{{ row.summary }}</td>{% endif %}
+      <td>
+        <form method="post" action="/rohstoffe/{{ i.ingredient_id }}/bestand" class="stock-form">
+          <input type="hidden" name="art" value="{{ selected or '' }}">
+          <input type="text" name="stock" value="{{ i.stock | de }}" inputmode="decimal" size="5" aria-label="Bestand in kg">
+          <span>kg</span>
+          <button type="submit">Speichern</button>
+        </form>
+      </td>
+      <td class="actions">
+        <a href="/rohstoffe/{{ i.ingredient_id }}/bearbeiten">Bearbeiten</a>
+        <form method="post" action="/rohstoffe/{{ i.ingredient_id }}/loeschen"
+              hx-confirm="Rohstoff „{{ i.name }}“ wirklich löschen?">
+          <input type="hidden" name="art" value="{{ selected or '' }}">
+          <button type="submit" class="danger">Löschen</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty">Keine Rohstoffe vorhanden.</p>
+{% endif %}
+{% endblock %}

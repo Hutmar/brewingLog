@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {# Error pages (4xx/5xx) are swapped into the page too, so failures are never silent. #}
+  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":true,"error":true}]}'>
+  <title>{% block title %}Brauprotokoll{% endblock %}</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body hx-boost="true">
+  {% set path = request.url.path %}
+  <header class="topbar">
+    <span class="brand">Brauprotokoll</span>
+    <nav aria-label="Hauptnavigation">
+      <a href="/protokoll" {% if path.startswith('/protokoll') %}class="active" aria-current="page"{% endif %}>Protokoll</a>
+      <a href="/rohstoffe" {% if path.startswith('/rohstoffe') %}class="active" aria-current="page"{% endif %}>Rohstoffe</a>
+    </nav>
+  </header>
+  <main>
+    {% if message %}<div class="flash ok" role="status">{{ message }}</div>{% endif %}
+    {% if error %}<div class="flash error" role="alert">{{ error }}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

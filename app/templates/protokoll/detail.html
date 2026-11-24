@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ detail.log.recipe.recipe_name }} – Brauprotokoll{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ detail.log.recipe.recipe_name }} <small>{{ detail.log.brewing_date | de_date }}</small></h1>
+  <div class="actions">
+    <a class="button" href="/protokoll/{{ detail.log.brewing_log_id }}/bearbeiten">Bearbeiten</a>
+    <a class="button secondary" href="/protokoll">Zur Übersicht</a>
+    <form method="post" action="/protokoll/{{ detail.log.brewing_log_id }}/loeschen"
+          hx-confirm="Sud „{{ detail.log.recipe.recipe_name }}“ vom {{ detail.log.brewing_date | de_date }} wirklich löschen?">
+      <button type="submit" class="danger">Löschen</button>
+    </form>
+  </div>
+</div>
+
+{% for group in detail.groups %}
+<section class="group">
+  <h2>{{ group.title }}</h2>
+  <dl>
+    {% for row in group.rows %}
+    <div class="dl-row">
+      <dt>{{ row.label }}</dt>
+      <dd>{{ row.value }}{% if row.calculated and row.value != '–' %} <span class="tag">berechnet</span>{% endif %}</dd>
+    </div>
+    {% endfor %}
+  </dl>
+</section>
+{% endfor %}
+{% endblock %}
