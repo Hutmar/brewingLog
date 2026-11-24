@@ -31,6 +31,17 @@ Konfiguration: `.env.example` nach `.env` kopieren und anpassen. Die Werte könn
 
 Hinweis: Läuft PostgreSQL unter WSL, ist für den Zugriff von Windows aus `networkingMode=mirrored` in `%USERPROFILE%\.wslconfig` hilfreich. Als Host `127.0.0.1` statt `localhost` verwenden, damit keine IPv6-Verbindung versucht wird.
 
+### Betrieb unter Debian 13 mit Systempaketen (ohne pip)
+
+```bash
+sudo apt install python3-fastapi uvicorn python3-jinja2 python3-multipart \
+    python3-sqlalchemy python3-alembic python3-psycopg python3-pydantic-settings
+# nur für die Tests:
+sudo apt install python3-pytest python3-httpx python3-coverage
+```
+
+`uvicorn` stellt `/usr/bin/uvicorn` bereit, `python3-starlette` und `python3-pydantic` kommen als Abhängigkeiten mit. Als systemd-Dienst siehe `brewinglog.service`.
+
 ## Start
 
 ```powershell

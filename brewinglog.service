@@ -9,7 +9,7 @@ User=reini
 WorkingDirectory=/home/reini/projects/brewingLog
 # Port 8000 is already used by the capacity application; 0.0.0.0 allows access
 # from other devices in the network (the app has no login).
-ExecStart=/home/reini/projects/brewingLog/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8010
+ExecStart=/usr/bin/uvicorn app.main:app --host 0.0.0.0 --port 8010
 Restart=always
 # Avoids a tight restart loop if the database is down or a migration fails.
 RestartSec=5
