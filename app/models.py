@@ -45,8 +45,9 @@ class Ingredient(Base):
     ingredient_type: Mapped[str] = mapped_column(String(20))
     name: Mapped[str] = mapped_column(String(100))
     stock: Mapped[Decimal | None] = mapped_column(
-        Numeric(4, 2), server_default="0", default=Decimal("0")
+        Numeric(7, 2), server_default="0", default=Decimal("0")
     )
+    unit: Mapped[str] = mapped_column(String(20), server_default="kg", default="kg")
     change_date: Mapped[date] = mapped_column(Date)
 
     attributes: Mapped[list["IngredientAttribute"]] = relationship(
@@ -62,7 +63,6 @@ class IngredientAttribute(Base):
     )
     ingredient_id: Mapped[int] = mapped_column(ForeignKey("ingredient.ingredient_id"))
     attribute_name: Mapped[str] = mapped_column(String(255))
-    attribute_datatype: Mapped[str] = mapped_column(String(50))
     attribute_value: Mapped[str] = mapped_column(String(255))
 
     ingredient: Mapped[Ingredient] = relationship(back_populates="attributes")
@@ -95,10 +95,9 @@ class BrewingLog(Base):
     )
     bottling_volume: Mapped[Decimal | None] = mapped_column(Numeric(3, 1))
     bottling_date: Mapped[date | None] = mapped_column(Date)
-    alcohol_current: Mapped[Decimal | None] = mapped_column(Numeric(3, 2))
     sugar_total: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
     co2_target: Mapped[Decimal] = mapped_column(Numeric(2, 1))
-    pressure_current: Mapped[Decimal | None] = mapped_column(Numeric(2, 1))
+    pressure_current: Mapped[Decimal | None] = mapped_column(Numeric(3, 2))
     co2_current: Mapped[Decimal | None] = mapped_column(Numeric(2, 1))
     lagering_startdate: Mapped[date | None] = mapped_column(Date)
 

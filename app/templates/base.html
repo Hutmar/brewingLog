@@ -6,7 +6,7 @@
   {# Error pages (4xx/5xx) are swapped into the page too, so failures are never silent. #}
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":true,"error":true}]}'>
   <title>{% block title %}Brauprotokoll{% endblock %}</title>
-  <link rel="icon" href="data:,">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/htmx.min.js" defer></script>
 </head>
@@ -15,8 +15,8 @@
   <header class="topbar">
     <span class="brand">Brauprotokoll</span>
     <nav aria-label="Hauptnavigation">
-      <a href="/protokoll" {% if path.startswith('/protokoll') %}class="active" aria-current="page"{% endif %}>Protokoll</a>
       <a href="/rohstoffe" {% if path.startswith('/rohstoffe') %}class="active" aria-current="page"{% endif %}>Rohstoffe</a>
+      <a href="/protokoll" {% if path.startswith('/protokoll') %}class="active" aria-current="page"{% endif %}>Protokoll</a>
     </nav>
   </header>
   <main>

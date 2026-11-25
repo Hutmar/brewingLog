@@ -9,45 +9,30 @@ from app.services import ingredients as service
 from app.services.ingredients import AttributeInput, IngredientInput
 
 
-def _with_attribute(name, datatype, value):
-    return IngredientInput("Hopfen", "X", "", [AttributeInput(name, datatype, value)])
+def _with_attribute(name, value):
+    return IngredientInput("Hopfen", "X", "", "kg", [AttributeInput(name, value)])
 
 
-@pytest.mark.parametrize(
-    ("datatype", "value", "stored"),
-    [
-        ("integer", " 12 ", "12"),
-        ("int", "7", "7"),
-        ("date", "2026-03-01", "2026-03-01"),
-        ("Datum", "01.03.2026", "2026-03-01"),
-        ("text", "  free  ", "free"),
-        ("decimal", "7,50", "7.50"),
-    ],
-)
-def test_attribute_values_are_normalised(datatype, value, stored):
-    errors, valid = service.validate(_with_attribute("A", datatype, value))
-    assert errors == {} and valid.attributes == [("A", datatype, stored)]
+def test_attribute_values_are_stored_as_entered_but_trimmed():
+    errors, valid = service.validate(_with_attribute(" Alpha ", "  7,5  "))
+    assert errors == {} and valid.attributes == [("Alpha", "7,5")]
 
 
-@pytest.mark.parametrize(
-    ("datatype", "value"),
-    [("integer", "1,5"), ("integer", "x"), ("date", "31.02.2026"), ("decimal", "1.2.3")],
-)
-def test_invalid_attribute_values_are_rejected(datatype, value):
-    errors, valid = service.validate(_with_attribute("A", datatype, value))
+@pytest.mark.parametrize(("name", "value"), [("A", ""), ("", "1"), ("A", "   ")])
+def test_incomplete_attribute_is_rejected(name, value):
+    errors, valid = service.validate(_with_attribute(name, value))
     assert valid is None and "attributes" in errors
 
 
 def test_length_limits():
-    data = IngredientInput("x" * 21, "y" * 101, "", [AttributeInput("n" * 256, "decimal", "1")])
+    data = IngredientInput("x" * 21, "y" * 101, "", "kg", [AttributeInput("n" * 256, "1")])
     errors, _ = service.validate(data)
     assert {"ingredient_type", "name", "attributes"} <= errors.keys()
-    long_value = _with_attribute("A", "text", "v" * 256)
-    assert "attributes" in service.validate(long_value)[0]
+    assert "attributes" in service.validate(_with_attribute("A", "v" * 256))[0]
 
 
 def test_blank_attribute_rows_are_ignored():
-    data = IngredientInput("Malz", "Pilsner", "", [AttributeInput(), AttributeInput("EBC", "decimal", "3")])
+    data = IngredientInput("Malz", "Pilsner", "", "kg", [AttributeInput(), AttributeInput("EBC", "3")])
     errors, valid = service.validate(data)
     assert errors == {} and len(valid.attributes) == 1
 

@@ -33,7 +33,7 @@ def _suggestions(session: Session, ingredient_type: str | None) -> dict:
     return {
         "type_suggestions": service.type_suggestions(session),
         "name_suggestions": repo.attribute_names(session, ingredient_type),
-        "datatype_suggestions": repo.attribute_datatypes(session, ingredient_type),
+        "unit_suggestions": service.unit_suggestions(session),
     }
 
 
@@ -102,14 +102,12 @@ def _collect(
     ingredient_type: str,
     name: str,
     stock: str,
+    unit: str,
     attr_name: list[str],
-    attr_datatype: list[str],
     attr_value: list[str],
 ) -> IngredientInput:
-    attributes = [
-        AttributeInput(n, t, v) for n, t, v in zip(attr_name, attr_datatype, attr_value, strict=False)
-    ]
-    return IngredientInput(ingredient_type, name, stock, attributes)
+    attributes = [AttributeInput(n, v) for n, v in zip(attr_name, attr_value, strict=False)]
+    return IngredientInput(ingredient_type, name, stock, unit, attributes)
 
 
 @router.post("", response_class=HTMLResponse)
@@ -119,11 +117,11 @@ def create(
     ingredient_type: Annotated[str, Form()] = "",
     name: Annotated[str, Form()] = "",
     stock: Annotated[str, Form()] = "",
+    unit: Annotated[str, Form()] = "",
     attr_name: Annotated[list[str], Form()] = [],
-    attr_datatype: Annotated[list[str], Form()] = [],
     attr_value: Annotated[list[str], Form()] = [],
 ):
-    data = _collect(ingredient_type, name, stock, attr_name, attr_datatype, attr_value)
+    data = _collect(ingredient_type, name, stock, unit, attr_name, attr_value)
     ingredient, errors = service.save_ingredient(session, data)
     if ingredient is None:
         if not data.attributes:
@@ -140,11 +138,11 @@ def update(
     ingredient_type: Annotated[str, Form()] = "",
     name: Annotated[str, Form()] = "",
     stock: Annotated[str, Form()] = "",
+    unit: Annotated[str, Form()] = "",
     attr_name: Annotated[list[str], Form()] = [],
-    attr_datatype: Annotated[list[str], Form()] = [],
     attr_value: Annotated[list[str], Form()] = [],
 ):
-    data = _collect(ingredient_type, name, stock, attr_name, attr_datatype, attr_value)
+    data = _collect(ingredient_type, name, stock, unit, attr_name, attr_value)
     ingredient, errors = service.save_ingredient(session, data, ingredient_id)
     if ingredient is None:
         if not data.attributes:

@@ -45,10 +45,9 @@ def attribute_names(session: Session, ingredient_type: str | None) -> list[str]:
     return _attribute_column_values(session, IngredientAttribute.attribute_name, ingredient_type)
 
 
-def attribute_datatypes(session: Session, ingredient_type: str | None) -> list[str]:
-    return _attribute_column_values(
-        session, IngredientAttribute.attribute_datatype, ingredient_type
-    )
+def list_units(session: Session) -> list[str]:
+    stmt = select(Ingredient.unit).distinct().order_by(Ingredient.unit)
+    return list(session.scalars(stmt))
 
 
 def is_used_as_yeast(session: Session, ingredient_id: int) -> bool:

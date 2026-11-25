@@ -62,23 +62,17 @@
       {{ m.number('volume_after_fermentation', 'Menge vor Verdünnung', 'l') }}
       {{ m.number('water_addition_fermentation', 'Verdünnung', 'l', hint=True) }}
       {{ m.number('alcohol_after_sec_fermentation', 'Alkoholgehalt nach Nachgärung', '% vol', hint=True) }}
-      {{ m.number('alcohol_current', 'Alkoholgehalt aktuell', '% vol') }}
     </div>
   </fieldset>
 
   <fieldset>
-    <legend>Geschmack und Karbonisierung</legend>
+    <legend>Karbonisierung</legend>
     <div class="grid">
-      <label>Bewertung (1–10)
-        <input type="text" inputmode="numeric" name="rating" value="{{ values.get('rating', '') }}" maxlength="2">
-        {% if errors.rating %}<span class="field-error">{{ errors.rating }}</span>{% endif %}
-      </label>
       {{ m.number('co2_target', 'CO₂ Soll', 'g/l') }}
-      {{ m.number('co2_current', 'CO₂ Ist', 'g/l') }}
       {{ m.number('pressure_current', 'Druck Ist', 'bar') }}
       {{ m.number('sugar_total', 'Zucker gesamt', 'g', hint=True) }}
     </div>
-    {{ m.textarea('remark', 'Geschmackliche Beschreibung', 500) }}
+    <p class="hint">CO₂ Ist wird aus Druck Ist und Gärtemperatur berechnet (siehe „Berechnete Werte“).</p>
   </fieldset>
 
   <fieldset>
@@ -97,9 +91,29 @@
          hx-include="closest form" hx-target="#calc-panel" hx-swap="innerHTML"></div>
   </fieldset>
 
+  <fieldset>
+    <legend>Bewertung</legend>
+    <div class="grid">
+      <label>Bewertung (1–10)
+        <input type="text" inputmode="numeric" name="rating" value="{{ values.get('rating', '') }}" maxlength="2">
+        {% if errors.rating %}<span class="field-error">{{ errors.rating }}</span>{% endif %}
+      </label>
+    </div>
+    {{ m.textarea('remark', 'Geschmackliche Beschreibung', 500) }}
+  </fieldset>
+
   <div class="form-actions">
     <button type="submit" class="primary">Speichern</button>
     <a class="button secondary" href="{{ '/protokoll/' ~ brewing_log_id if brewing_log_id else '/protokoll' }}">Abbrechen</a>
+    {% if brewing_log_id %}
+    <button type="submit" form="delete-form" class="danger">Löschen</button>
+    {% endif %}
   </div>
 </form>
+
+{% if brewing_log_id %}
+{# Separate form: forms cannot be nested, the button above refers to it by id. #}
+<form id="delete-form" method="post" action="/protokoll/{{ brewing_log_id }}/loeschen"
+      hx-confirm="Sud „{{ values.get('recipe_name', '') }}“ wirklich löschen?"></form>
+{% endif %}
 {% endblock %}

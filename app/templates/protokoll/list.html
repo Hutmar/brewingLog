@@ -6,40 +6,12 @@
   <a class="button" href="/protokoll/neu">Neuer Sud</a>
 </div>
 
-{% if rows %}
-<div class="table-wrap">
-<table>
-  <thead>
-    <tr>
-      <th>Rezept</th>
-      <th>Braudatum</th>
-      <th>Alkohol</th>
-      <th>Abfüllmenge</th>
-      <th>Bewertung</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-  {% for row in rows %}
-    <tr>
-      <td><a href="/protokoll/{{ row.brewing_log_id }}">{{ row.recipe_name }}</a></td>
-      <td>{{ row.brewing_date }}</td>
-      <td>{{ row.alcohol }}</td>
-      <td>{{ row.bottling_volume }}</td>
-      <td>{{ row.rating }}</td>
-      <td class="actions">
-        <a href="/protokoll/{{ row.brewing_log_id }}/bearbeiten">Bearbeiten</a>
-        <form method="post" action="/protokoll/{{ row.brewing_log_id }}/loeschen"
-              hx-confirm="Sud „{{ row.recipe_name }}“ vom {{ row.brewing_date }} wirklich löschen?">
-          <button type="submit" class="danger">Löschen</button>
-        </form>
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+<div class="search">
+  <input type="search" name="q" value="{{ overview.prefs.q }}" placeholder="Rezept suchen …"
+         aria-label="Rezept suchen" autocomplete="off" maxlength="100"
+         hx-get="/protokoll/tabelle" hx-trigger="input changed delay:300ms, search"
+         hx-target="#log-table" hx-swap="outerHTML" hx-params="q">
 </div>
-{% else %}
-<p class="empty">Noch keine Brauvorgänge vorhanden.</p>
-{% endif %}
+
+{% include "protokoll/_table.html" %}
 {% endblock %}

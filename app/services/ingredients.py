@@ -1,7 +1,7 @@
 """Business logic for the ingredient management."""
 import logging
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -14,35 +14,26 @@ from app.repositories import ingredients as repo
 logger = logging.getLogger(__name__)
 
 DEFAULT_TYPES = ("Malz", "Hopfen", "Hefe")
+DEFAULT_UNITS = ("kg", "g", "pkg")
+DEFAULT_UNIT = DEFAULT_UNITS[0]
 
 # Limits taken from the column definitions in brauprotokoll.sql.
 MAX_TYPE_LEN = 20
 MAX_NAME_LEN = 100
+MAX_UNIT_LEN = 20
 MAX_ATTR_NAME_LEN = 255
-MAX_ATTR_DATATYPE_LEN = 50
 MAX_ATTR_VALUE_LEN = 255
-MAX_STOCK = Decimal("99.99")  # numeric(4,2)
-
-# attribute_datatype is free text; these well-known names get their value
-# validated and normalised, all other datatypes are stored as entered.
-NUMERIC_DATATYPES = {"decimal", "number", "numeric", "float", "zahl", "dezimal"}
-INTEGER_DATATYPES = {"integer", "int", "ganzzahl"}
-DATE_DATATYPES = {"date", "datum"}
-
-
-def is_numeric_datatype(datatype: str) -> bool:
-    return datatype.strip().lower() in NUMERIC_DATATYPES
+MAX_STOCK = Decimal("99999.99")  # numeric(7,2)
 
 
 @dataclass
 class AttributeInput:
     name: str = ""
-    datatype: str = ""
     value: str = ""
     error: str | None = None
 
     def is_blank(self) -> bool:
-        return not (self.name.strip() or self.datatype.strip() or self.value.strip())
+        return not (self.name.strip() or self.value.strip())
 
 
 @dataclass
@@ -50,6 +41,7 @@ class IngredientInput:
     ingredient_type: str = ""
     name: str = ""
     stock: str = ""
+    unit: str = DEFAULT_UNIT
     attributes: list[AttributeInput] = field(default_factory=list)
 
 
@@ -58,31 +50,8 @@ class ValidatedIngredient:
     ingredient_type: str
     name: str
     stock: Decimal
-    attributes: list[tuple[str, str, str]]
-
-
-def _normalise_attribute_value(datatype: str, value: str) -> str:
-    kind = datatype.strip().lower()
-    if kind in NUMERIC_DATATYPES:
-        try:
-            number = parse_decimal(value)
-        except ValueError:
-            raise ValueError("Bitte eine Zahl eingeben.") from None
-        return format(number, "f")
-    if kind in INTEGER_DATATYPES:
-        try:
-            return str(int(value.strip()))
-        except ValueError:
-            raise ValueError("Bitte eine ganze Zahl eingeben.") from None
-    if kind in DATE_DATATYPES:
-        try:
-            return date.fromisoformat(value.strip()).isoformat()
-        except ValueError:
-            try:
-                return datetime.strptime(value.strip(), "%d.%m.%Y").date().isoformat()
-            except ValueError:
-                raise ValueError("Bitte ein Datum eingeben (TT.MM.JJJJ).") from None
-    return value.strip()
+    unit: str
+    attributes: list[tuple[str, str]]
 
 
 def _validate_stock(text: str) -> tuple[Decimal, str | None]:
@@ -95,7 +64,7 @@ def _validate_stock(text: str) -> tuple[Decimal, str | None]:
     if stock < 0:
         return stock, "Der Bestand darf nicht negativ sein."
     if stock > MAX_STOCK:
-        return stock, "Der Bestand darf höchstens 99,99 kg betragen."
+        return stock, "Der Bestand darf höchstens 99999,99 betragen."
     if stock != stock.quantize(Decimal("0.01")):
         return stock, "Höchstens zwei Nachkommastellen sind erlaubt."
     return stock, None
@@ -107,6 +76,7 @@ def validate(data: IngredientInput) -> tuple[dict[str, str], ValidatedIngredient
 
     data.ingredient_type = data.ingredient_type.strip()
     data.name = data.name.strip()
+    data.unit = data.unit.strip() or DEFAULT_UNIT
     if not data.ingredient_type:
         errors["ingredient_type"] = "Bitte eine Rohstoffart angeben."
     elif len(data.ingredient_type) > MAX_TYPE_LEN:
@@ -115,36 +85,34 @@ def validate(data: IngredientInput) -> tuple[dict[str, str], ValidatedIngredient
         errors["name"] = "Bitte eine Bezeichnung angeben."
     elif len(data.name) > MAX_NAME_LEN:
         errors["name"] = f"Höchstens {MAX_NAME_LEN} Zeichen erlaubt."
+    if len(data.unit) > MAX_UNIT_LEN:
+        errors["unit"] = f"Höchstens {MAX_UNIT_LEN} Zeichen erlaubt."
 
     stock, stock_error = _validate_stock(data.stock)
     if stock_error:
         errors["stock"] = stock_error
 
     data.attributes = [a for a in data.attributes if not a.is_blank()]
-    cleaned: list[tuple[str, str, str]] = []
+    cleaned: list[tuple[str, str]] = []
     for attr in data.attributes:
         attr.error = None
-        attr.name, attr.datatype = attr.name.strip(), attr.datatype.strip()
-        if not (attr.name and attr.datatype and attr.value.strip()):
-            attr.error = "Name, Datentyp und Wert sind erforderlich."
-        elif len(attr.name) > MAX_ATTR_NAME_LEN or len(attr.datatype) > MAX_ATTR_DATATYPE_LEN:
-            attr.error = "Name oder Datentyp ist zu lang."
+        attr.name, attr.value = attr.name.strip(), attr.value.strip()
+        if not (attr.name and attr.value):
+            attr.error = "Name und Wert sind erforderlich."
+        elif len(attr.name) > MAX_ATTR_NAME_LEN:
+            attr.error = f"Der Name darf höchstens {MAX_ATTR_NAME_LEN} Zeichen haben."
+        elif len(attr.value) > MAX_ATTR_VALUE_LEN:
+            attr.error = f"Der Wert darf höchstens {MAX_ATTR_VALUE_LEN} Zeichen haben."
         else:
-            try:
-                value = _normalise_attribute_value(attr.datatype, attr.value)
-            except ValueError as exc:
-                attr.error = str(exc)
-            else:
-                if len(value) > MAX_ATTR_VALUE_LEN:
-                    attr.error = f"Der Wert darf höchstens {MAX_ATTR_VALUE_LEN} Zeichen haben."
-                else:
-                    cleaned.append((attr.name, attr.datatype, value))
+            cleaned.append((attr.name, attr.value))
         if attr.error:
             errors["attributes"] = "Bitte die markierten Eigenschaften korrigieren."
 
     if errors:
         return errors, None
-    return errors, ValidatedIngredient(data.ingredient_type, data.name, stock, cleaned)
+    return errors, ValidatedIngredient(
+        data.ingredient_type, data.name, stock, data.unit, cleaned
+    )
 
 
 def save_ingredient(
@@ -170,10 +138,10 @@ def save_ingredient(
     ingredient.ingredient_type = valid.ingredient_type
     ingredient.name = valid.name
     ingredient.stock = valid.stock
+    ingredient.unit = valid.unit
     ingredient.change_date = date.today()
     ingredient.attributes = [
-        IngredientAttribute(attribute_name=n, attribute_datatype=t, attribute_value=v)
-        for n, t, v in valid.attributes
+        IngredientAttribute(attribute_name=n, attribute_value=v) for n, v in valid.attributes
     ]
     try:
         session.commit()
@@ -225,15 +193,17 @@ def input_from_ingredient(ingredient: Ingredient) -> IngredientInput:
         ingredient_type=ingredient.ingredient_type,
         name=ingredient.name,
         stock=str(ingredient.stock if ingredient.stock is not None else ""),
-        attributes=[
-            AttributeInput(a.attribute_name, a.attribute_datatype, a.attribute_value)
-            for a in ingredient.attributes
-        ],
+        unit=ingredient.unit,
+        attributes=[AttributeInput(a.attribute_name, a.attribute_value) for a in ingredient.attributes],
     )
 
 
 def type_suggestions(session: Session) -> list[str]:
     return list(dict.fromkeys([*DEFAULT_TYPES, *repo.list_types(session)]))
+
+
+def unit_suggestions(session: Session) -> list[str]:
+    return list(dict.fromkeys([*DEFAULT_UNITS, *repo.list_units(session)]))
 
 
 @dataclass
@@ -251,19 +221,13 @@ class Overview:
     rows: list[OverviewRow]
 
 
-def _display_value(attr: IngredientAttribute) -> str:
-    if is_numeric_datatype(attr.attribute_datatype):
-        return attr.attribute_value.replace(".", ",")
-    return attr.attribute_value
-
-
 def build_overview(session: Session, selected: str | None) -> Overview:
     """Rows for the overview; a single type gets one column per attribute name."""
     ingredients = repo.list_ingredients(session, selected)
     columns = repo.attribute_names(session, selected) if selected else []
     rows = []
     for ingredient in ingredients:
-        by_name = {a.attribute_name: _display_value(a) for a in ingredient.attributes}
-        summary = ", ".join(f"{a.attribute_name}: {_display_value(a)}" for a in ingredient.attributes)
+        by_name = {a.attribute_name: a.attribute_value for a in ingredient.attributes}
+        summary = ", ".join(f"{a.attribute_name}: {a.attribute_value}" for a in ingredient.attributes)
         rows.append(OverviewRow(ingredient, [by_name.get(c, "") for c in columns], summary))
     return Overview(repo.list_types(session), selected, columns, rows)

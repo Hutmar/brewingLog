@@ -1,0 +1,45 @@
+{% import "protokoll/_icons.html" as icons %}
+{% macro sort_header(key) %}
+{% set c = overview.columns[key] %}
+<a href="/protokoll?sort={{ key }}&amp;dir={{ c.next_direction }}"
+   hx-get="/protokoll/tabelle?sort={{ key }}&amp;dir={{ c.next_direction }}"
+   hx-target="#log-table" hx-swap="outerHTML">{{ c.label }}{% if c.indicator %} {{ c.indicator }}{% endif %}</a>
+{% endmacro %}
+<div id="log-table">
+{% if overview.rows %}
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th aria-sort="{{ ('ascending' if overview.prefs.direction == 'asc' else 'descending') if overview.prefs.sort == 'status' else 'none' }}">{{ sort_header('status') }}</th>
+      <th aria-sort="{{ ('ascending' if overview.prefs.direction == 'asc' else 'descending') if overview.prefs.sort == 'recipe' else 'none' }}">{{ sort_header('recipe') }}</th>
+      <th aria-sort="{{ ('ascending' if overview.prefs.direction == 'asc' else 'descending') if overview.prefs.sort == 'date' else 'none' }}">{{ sort_header('date') }}</th>
+      <th>Enddatum</th>
+      <th>Alkohol</th>
+      <th>Abfüllmenge</th>
+      <th>Bewertung</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for row in overview.rows %}
+    <tr>
+      <td class="status-col">{{ icons.status_icon(row.status, row.status_label) }}</td>
+      <td><a href="/protokoll/{{ row.brewing_log_id }}">{{ row.recipe_name }}</a></td>
+      <td>{{ row.brewing_date }}</td>
+      <td>{{ row.end_date }}</td>
+      <td>{{ row.alcohol }}</td>
+      <td>{{ row.bottling_volume }}</td>
+      <td>{{ row.rating }}</td>
+      <td class="actions"><a href="/protokoll/{{ row.brewing_log_id }}/bearbeiten">Bearbeiten</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% elif overview.prefs.q %}
+<p class="empty">Keine Sude gefunden für „{{ overview.prefs.q }}“.</p>
+{% else %}
+<p class="empty">Noch keine Brauvorgänge vorhanden.</p>
+{% endif %}
+</div>

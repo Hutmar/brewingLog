@@ -20,9 +20,13 @@
       <input type="text" name="name" value="{{ data.name }}" maxlength="100" required {{ 'autofocus' if not ingredient_id and data.ingredient_type }}>
       {% if errors.name %}<span class="field-error">{{ errors.name }}</span>{% endif %}
     </label>
-    <label>Bestand (kg)
+    <label>Bestand
       <input type="text" name="stock" value="{{ data.stock }}" inputmode="decimal">
       {% if errors.stock %}<span class="field-error">{{ errors.stock }}</span>{% endif %}
+    </label>
+    <label>Einheit
+      <input type="text" name="unit" value="{{ data.unit }}" list="dl-units" maxlength="20" autocomplete="off">
+      {% if errors.unit %}<span class="field-error">{{ errors.unit }}</span>{% endif %}
     </label>
   </fieldset>
 

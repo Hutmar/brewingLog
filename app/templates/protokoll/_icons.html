@@ -1,0 +1,18 @@
+{# Status icons; the text label is available as tooltip and for screen readers. #}
+{% macro status_icon(status, label) %}
+<span class="status status-{{ status }}" title="{{ label }}" role="img" aria-label="{{ label }}">
+  {% if status == 'fermenting' %}
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+  </svg>
+  {% elif status == 'maturing' %}
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 3h12M6 21h12M7 3c0 5 5 6 5 9s-5 4-5 9M17 3c0 5-5 6-5 9s5 4 5 9"/>
+  </svg>
+  {% else %}
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 13l4 4L19 7"/>
+  </svg>
+  {% endif %}
+</span>
+{% endmacro %}

@@ -29,3 +29,15 @@ def test_unexpected_error_shows_500_page(client):
 
 def test_htmx_swaps_error_responses(client):
     assert '"code":"[45]..","swap":true' in client.get("/protokoll").text
+
+
+def test_menu_lists_ingredients_before_protokoll(client):
+    page = client.get("/rohstoffe").text
+    assert page.index('href="/rohstoffe"') < page.index('href="/protokoll"')
+
+
+def test_favicon_is_linked_and_served(client):
+    page = client.get("/rohstoffe").text
+    assert 'rel="icon" type="image/svg+xml" href="/static/favicon.svg"' in page
+    response = client.get("/static/favicon.svg")
+    assert response.status_code == 200 and "<svg" in response.text

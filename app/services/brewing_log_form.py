@@ -44,13 +44,13 @@ NUMBER_FIELDS = (
     NumberField("volume_after_fermentation", "Menge vor Verdünnung", 3, 1),
     NumberField("water_addition_fermentation", "Verdünnung", 2, 1),
     NumberField("bottling_volume", "Abfüllmenge", 3, 1),
-    NumberField("alcohol_current", "Alkoholgehalt aktuell", 3, 2),
     NumberField("sugar_total", "Zucker gesamt", 4, 1),
     NumberField("co2_target", "CO₂ Soll", 2, 1, required=True),
-    NumberField("pressure_current", "Druck Ist", 2, 1),
-    NumberField("co2_current", "CO₂ Ist", 2, 1),
+    NumberField("pressure_current", "Druck Ist", 3, 2),
 )
 FIELDS_BY_NAME = {f.name: f for f in NUMBER_FIELDS}
+# Not entered by the user: calculated from the measured pressure.
+CO2_CURRENT_FIELD = NumberField("co2_current", "CO₂ Ist", 2, 1)
 DATE_FIELDS = ("brewing_date", "bottling_date", "lagering_startdate")
 TEXT_FIELDS = ("recipe_name", "yeast", "deviations", "rating", "remark")
 
@@ -159,6 +159,7 @@ class Calculated:
     sugar_half: Decimal | None
     sugar_third: Decimal | None
     target_pressure: Decimal | None
+    co2_current: Decimal | None
     main_fermentation_days: int | None
     maturation_days: int | None
     total_days: int | None
@@ -206,6 +207,7 @@ def calculate(values: Values) -> Calculated:
         sugar_half=sugar_half,
         sugar_third=calc.sugar_per_third_liter_bottle(sugar_half),
         target_pressure=calc.target_pressure(v["co2_target"], v["temperature_fermentation"]),
+        co2_current=calc.co2_from_pressure(v["pressure_current"], v["temperature_fermentation"]),
         main_fermentation_days=calc.main_fermentation_days(v["brewing_date"], v["bottling_date"]),
         maturation_days=calc.maturation_days(v["bottling_date"], v["lagering_startdate"]),
         total_days=calc.total_days(v["brewing_date"], v["lagering_startdate"]),
@@ -249,6 +251,15 @@ def save(
             message = check_range(FIELDS_BY_NAME[name], calculated.effective[name])
             if message:
                 errors.setdefault(name, f"Der berechnete Wert passt nicht in das Feld, bitte manuell eingeben. ({message})")
+
+    # CO2 Ist is derived from the pressure and has to fit its column as well.
+    if calculated.co2_current is not None:
+        message = check_range(CO2_CURRENT_FIELD, calculated.co2_current)
+        if message:
+            errors.setdefault(
+                "pressure_current",
+                f"Der daraus berechnete CO₂-Wert passt nicht in das Feld. ({message})",
+            )
 
     recipe_name = raw.get("recipe_name", "").strip()
     if not recipe_name:
@@ -304,6 +315,7 @@ def save(
             if value is None and field.name in ZERO_DEFAULT_FIELDS:
                 value = Decimal(0)
             setattr(log, field.name, value)
+        log.co2_current = calculated.co2_current
         for name in DATE_FIELDS:
             setattr(log, name, values[name])
         _apply_rating(log, rating_value, remark)

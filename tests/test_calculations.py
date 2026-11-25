@@ -94,3 +94,43 @@ def test_missing_inputs_yield_none():
     assert calc.sugar_per_half_liter_bottle(D("5.4"), D("-300")) is None
     assert calc.target_pressure(None, D("13")) is None
     assert calc.sugar_total(None, D("20")) is None
+
+
+@pytest.mark.parametrize(
+    ("pressure", "temperature", "expected"),
+    [("1.6", "13", "5.3"), ("2.3", "20", "5.4"), ("0", "13", "2.1")],
+)
+def test_co2_from_pressure(pressure, temperature, expected):
+    assert calc.co2_from_pressure(D(pressure), D(temperature)) == D(expected)
+
+
+def test_co2_from_pressure_inverts_target_pressure():
+    for co2 in ("4.8", "5.4", "6.0"):
+        pressure = calc.target_pressure(D(co2), D("13"))
+        assert abs(calc.co2_from_pressure(pressure, D("13")) - D(co2)) <= D("0.2")
+
+
+def test_co2_from_pressure_missing_inputs():
+    assert calc.co2_from_pressure(None, D("13")) is None
+    assert calc.co2_from_pressure(D("1.6"), None) is None
+    assert calc.co2_from_pressure(D("1.6"), D("-300")) is None
+
+
+def test_end_date_is_maturation_start_plus_period():
+    assert calc.end_date(date(2026, 3, 23)) == date(2026, 4, 6)
+    assert calc.end_date(None) is None
+
+
+@pytest.mark.parametrize(
+    ("start", "today", "expected"),
+    [
+        (None, date(2026, 4, 15), "fermenting"),
+        (date(2026, 4, 20), date(2026, 4, 15), "fermenting"),  # maturation not started yet
+        (date(2026, 4, 15), date(2026, 4, 15), "maturing"),
+        (date(2026, 4, 2), date(2026, 4, 15), "maturing"),  # 13 days
+        (date(2026, 4, 1), date(2026, 4, 15), "done"),  # exactly 14 days
+        (date(2026, 1, 1), date(2026, 4, 15), "done"),
+    ],
+)
+def test_brew_status(start, today, expected):
+    assert calc.brew_status(start, today) == expected

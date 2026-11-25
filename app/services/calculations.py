@@ -7,7 +7,7 @@ Results are rounded like the spreadsheet did (half away from zero) and match
 the precision of the corresponding database columns where one exists.
 """
 import math
-from datetime import date
+from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 # Alcohol produced by the priming sugar during secondary fermentation (% vol).
@@ -123,6 +123,39 @@ def target_pressure(
     if retained is None:
         return None
     return _round(max(0.0, float(co2_target) / (10 * retained) - 1.013), 1)
+
+
+def co2_from_pressure(
+    pressure_current: Decimal | None, temperature_fermentation: Decimal | None
+) -> Decimal | None:
+    """CO2 content (g/l) for a measured bottle pressure; inverse of target_pressure."""
+    if pressure_current is None or temperature_fermentation is None:
+        return None
+    retained = _co2_solubility_term(temperature_fermentation)
+    if retained is None:
+        return None
+    return _round((float(pressure_current) + 1.013) * 10 * retained, 1)
+
+
+STATUS_FERMENTING = "fermenting"
+STATUS_MATURING = "maturing"
+STATUS_DONE = "done"
+
+
+def end_date(lagering_startdate: date | None) -> date | None:
+    """Date on which the maturation ends; None until the maturation has a start date."""
+    if lagering_startdate is None:
+        return None
+    return lagering_startdate + timedelta(days=MATURATION_PERIOD_DAYS)
+
+
+def brew_status(lagering_startdate: date | None, today: date) -> str:
+    """Fermenting until maturation starts, maturing until its end date, then done."""
+    if lagering_startdate is None or lagering_startdate > today:
+        return STATUS_FERMENTING
+    if today >= lagering_startdate + timedelta(days=MATURATION_PERIOD_DAYS):
+        return STATUS_DONE
+    return STATUS_MATURING
 
 
 def _days_between(start: date | None, end: date | None, extra_days: int = 0) -> int | None:

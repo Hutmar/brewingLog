@@ -7,35 +7,46 @@ from app.services.ingredients import AttributeInput, IngredientInput
 
 
 def _hop(**overrides) -> IngredientInput:
-    data = IngredientInput(
-        "Hopfen", "Perle", "1,5", [AttributeInput("Alpha", "decimal", "7,9")]
-    )
+    data = IngredientInput("Hopfen", "Perle", "1,5", "kg", [AttributeInput("Alpha", "7,9")])
     for key, value in overrides.items():
         setattr(data, key, value)
     return data
 
 
-def test_save_creates_ingredient_with_normalised_values(session):
+def test_save_creates_ingredient(session):
     ingredient, errors = service.save_ingredient(session, _hop())
     assert errors == {}
     assert ingredient.stock == Decimal("1.50")
+    assert ingredient.unit == "kg"
     assert ingredient.change_date == date.today()
-    assert [(a.attribute_name, a.attribute_value) for a in ingredient.attributes] == [("Alpha", "7.9")]
+    assert [(a.attribute_name, a.attribute_value) for a in ingredient.attributes] == [("Alpha", "7,9")]
 
 
 def test_validation_errors(session):
-    data = IngredientInput("", "", "abc", [AttributeInput("Alpha", "decimal", "x"), AttributeInput("only name")])
+    data = IngredientInput("", "", "abc", "x" * 21, [AttributeInput("Alpha", ""), AttributeInput("only name")])
     ingredient, errors = service.save_ingredient(session, data)
     assert ingredient is None
-    assert {"ingredient_type", "name", "stock", "attributes"} <= errors.keys()
+    assert {"ingredient_type", "name", "stock", "unit", "attributes"} <= errors.keys()
     assert all(a.error for a in data.attributes)
 
 
 def test_stock_limits(session):
     assert "negativ" in service.validate(_hop(stock="-1"))[0]["stock"]
-    assert "99,99" in service.validate(_hop(stock="100"))[0]["stock"]
+    assert "99999,99" in service.validate(_hop(stock="100000"))[0]["stock"]
     assert "Nachkomma" in service.validate(_hop(stock="1,234"))[0]["stock"]
     assert service.validate(_hop(stock=""))[1].stock == Decimal("0")
+    assert service.validate(_hop(stock="1750", unit="g"))[1].stock == Decimal("1750")
+
+
+def test_unit_defaults_to_kg_and_can_be_free_text(session):
+    assert service.validate(_hop(unit=""))[1].unit == "kg"
+    ingredient, errors = service.save_ingredient(session, _hop(unit="Beutel"))
+    assert errors == {} and ingredient.unit == "Beutel"
+
+
+def test_unit_suggestions_contain_defaults_and_existing_units(session):
+    service.save_ingredient(session, _hop(unit="Beutel"))
+    assert service.unit_suggestions(session) == ["kg", "g", "pkg", "Beutel"]
 
 
 def test_duplicate_type_and_name_rejected(session):
@@ -44,12 +55,13 @@ def test_duplicate_type_and_name_rejected(session):
     assert ingredient is None and "name" in errors
 
 
-def test_update_replaces_attributes(session):
+def test_update_replaces_attributes_and_unit(session):
     ingredient, _ = service.save_ingredient(session, _hop())
-    data = _hop(attributes=[AttributeInput("Herkunft", "text", "DE")])
+    data = _hop(unit="g", attributes=[AttributeInput("Herkunft", "DE")])
     updated, errors = service.save_ingredient(session, data, ingredient.ingredient_id)
     assert errors == {}
     assert [a.attribute_name for a in updated.attributes] == ["Herkunft"]
+    assert updated.unit == "g"
 
 
 def test_update_stock_and_delete(session):
@@ -83,7 +95,7 @@ def test_yeast_in_use_cannot_be_deleted(session):
 def test_overview_columns_per_type(session):
     service.save_ingredient(session, _hop())
     service.save_ingredient(
-        session, IngredientInput("Malz", "Pilsner", "5", [AttributeInput("EBC", "decimal", "3")])
+        session, IngredientInput("Malz", "Pilsner", "5", "kg", [AttributeInput("EBC", "3")])
     )
     overview = service.build_overview(session, "Hopfen")
     assert overview.columns == ["Alpha"]
@@ -99,8 +111,8 @@ def test_web_flow(client):
             "ingredient_type": "Malz",
             "name": "Wiener",
             "stock": "2,5",
+            "unit": "kg",
             "attr_name": ["EBC"],
-            "attr_datatype": ["decimal"],
             "attr_value": ["6,5"],
         },
     )
@@ -111,10 +123,17 @@ def test_web_flow(client):
     assert "Bitte eine Bezeichnung angeben." in invalid.text
 
     suggestions = client.get("/rohstoffe/vorschlaege", params={"ingredient_type": "Malz"})
-    assert 'value="EBC"' in suggestions.text
+    assert 'value="EBC"' in suggestions.text and 'value="pkg"' in suggestions.text
 
     page = client.get("/rohstoffe/1/bearbeiten")
-    assert 'value="Wiener"' in page.text and 'value="2,50"' in page.text
+    assert 'value="Wiener"' in page.text and 'value="2,50"' in page.text and 'value="kg"' in page.text
+    assert "attr_datatype" not in page.text
 
     assert "Bestand gespeichert." in client.post("/rohstoffe/1/bestand", data={"stock": "3"}).text
     assert "Rohstoff gelöscht." in client.post("/rohstoffe/1/loeschen").text
+
+
+def test_overview_shows_unit_per_ingredient(client):
+    client.post("/rohstoffe", data={"ingredient_type": "Hopfen", "name": "Perle", "stock": "250", "unit": "g"})
+    page = client.get("/rohstoffe?art=Hopfen").text
+    assert "<span>g</span>" in page and 'value="250,00"' in page

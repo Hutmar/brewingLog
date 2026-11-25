@@ -2,7 +2,7 @@
 from typing import Annotated
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -50,16 +50,52 @@ def _form_page(
     return templates.TemplateResponse(request, "protokoll/form.html", context)
 
 
+VIEW_COOKIE = "protokoll_view"
+
+
+def _overview_response(
+    request: Request,
+    session: Session,
+    template: str,
+    q: str | None,
+    sort: str | None,
+    direction: str | None,
+    extra: dict | None = None,
+):
+    """Render the overview with the search/sort state remembered in a session cookie."""
+    stored = service.ViewPrefs.from_cookie(request.cookies.get(VIEW_COOKIE))
+    prefs = service.ViewPrefs.build(q, sort, direction, stored)
+    context = {"overview": service.build_overview(session, prefs), **(extra or {})}
+    response = templates.TemplateResponse(request, template, context)
+    # No max-age: the cookie lives as long as the browser session.
+    response.set_cookie(VIEW_COOKIE, prefs.to_cookie(), httponly=True, samesite="lax")
+    return response
+
+
 @router.get("", response_class=HTMLResponse)
 def overview(
-    request: Request, session: SessionDep, msg: str | None = None, error: str | None = None
+    request: Request,
+    session: SessionDep,
+    q: str | None = None,
+    sort: str | None = None,
+    direction: Annotated[str | None, Query(alias="dir")] = None,
+    msg: str | None = None,
+    error: str | None = None,
 ):
-    context = {
-        "rows": service.build_overview(session),
-        "message": MESSAGES.get(msg or ""),
-        "error": error,
-    }
-    return templates.TemplateResponse(request, "protokoll/list.html", context)
+    extra = {"message": MESSAGES.get(msg or ""), "error": error}
+    return _overview_response(request, session, "protokoll/list.html", q, sort, direction, extra)
+
+
+@router.get("/tabelle", response_class=HTMLResponse)
+def overview_table(
+    request: Request,
+    session: SessionDep,
+    q: str | None = None,
+    sort: str | None = None,
+    direction: Annotated[str | None, Query(alias="dir")] = None,
+):
+    """Table fragment for live search and sorting."""
+    return _overview_response(request, session, "protokoll/_table.html", q, sort, direction)
 
 
 @router.get("/neu", response_class=HTMLResponse)

@@ -38,8 +38,8 @@
       <td>
         <form method="post" action="/rohstoffe/{{ i.ingredient_id }}/bestand" class="stock-form">
           <input type="hidden" name="art" value="{{ selected or '' }}">
-          <input type="text" name="stock" value="{{ i.stock | de }}" inputmode="decimal" size="5" aria-label="Bestand in kg">
-          <span>kg</span>
+          <input type="text" name="stock" value="{{ i.stock | de }}" inputmode="decimal" size="5" aria-label="Bestand in {{ i.unit }}">
+          <span>{{ i.unit }}</span>
           <button type="submit">Speichern</button>
         </form>
       </td>

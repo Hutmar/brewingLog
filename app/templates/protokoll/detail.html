@@ -6,10 +6,6 @@
   <div class="actions">
     <a class="button" href="/protokoll/{{ detail.log.brewing_log_id }}/bearbeiten">Bearbeiten</a>
     <a class="button secondary" href="/protokoll">Zur Übersicht</a>
-    <form method="post" action="/protokoll/{{ detail.log.brewing_log_id }}/loeschen"
-          hx-confirm="Sud „{{ detail.log.recipe.recipe_name }}“ vom {{ detail.log.brewing_date | de_date }} wirklich löschen?">
-      <button type="submit" class="danger">Löschen</button>
-    </form>
   </div>
 </div>
 

@@ -15,12 +15,17 @@ def _with_relations():
     )
 
 
-def list_logs(session: Session) -> list[BrewingLog]:
-    stmt = (
-        select(BrewingLog)
-        .options(*_with_relations())
-        .order_by(BrewingLog.brewing_date.desc(), BrewingLog.brewing_log_id.desc())
-    )
+def list_logs(session: Session, recipe_search: str = "") -> list[BrewingLog]:
+    """All logs, optionally limited to recipe names containing the search text."""
+    stmt = select(BrewingLog).options(*_with_relations())
+    if recipe_search:
+        # Escape LIKE wildcards so that the text is matched literally.
+        escaped = (
+            recipe_search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
+        stmt = stmt.join(BrewingLog.recipe).where(
+            Recipe.recipe_name.ilike(f"%{escaped}%", escape="\\")
+        )
     return list(session.scalars(stmt))
 
 

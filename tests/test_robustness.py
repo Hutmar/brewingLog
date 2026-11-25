@@ -44,7 +44,7 @@ def _raw(yeast_row, **overrides):
 
 
 def test_failed_ingredient_save_leaves_nothing_behind(session, failing_commit, caplog):
-    data = IngredientInput("Hopfen", "Perle", "1", [AttributeInput("Alpha", "decimal", "7")])
+    data = IngredientInput("Hopfen", "Perle", "1", "kg", [AttributeInput("Alpha", "7")])
     with caplog.at_level(logging.ERROR):
         ingredient, errors = ingredient_service.save_ingredient(session, data)
     assert ingredient is None and "_general" in errors

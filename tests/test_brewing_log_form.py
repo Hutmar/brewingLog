@@ -127,3 +127,57 @@ def test_web_flow(client, session, yeast):
     assert "Sud gespeichert." in client.post("/protokoll/1", data=_raw(yeast, deviations="x")).text
     assert "Sud gelöscht." in client.post("/protokoll/1/loeschen").text
     assert client.get("/protokoll/1/bearbeiten").status_code == 404
+
+
+def test_co2_current_is_calculated_from_pressure(session, yeast):
+    log, errors = form.save(session, _raw(yeast, pressure_current="1,6"))
+    assert errors == {}
+    assert log.pressure_current == D("1.6")
+    assert log.co2_current == D("5.3")
+
+
+def test_co2_current_stays_empty_without_pressure(session, yeast):
+    log, _ = form.save(session, _raw(yeast, co2_current="9.9"))
+    assert log.co2_current is None
+
+
+def test_pressure_accepts_two_decimals_but_not_more(session, yeast):
+    log, errors = form.save(session, _raw(yeast, pressure_current="2,35"))
+    assert errors == {} and log.pressure_current == D("2.35")
+    _, errors = form.save(session, _raw(yeast, recipe_name="X", pressure_current="2,355"))
+    assert "pressure_current" in errors
+    _, errors = form.save(session, _raw(yeast, recipe_name="X", pressure_current="10"))
+    assert "pressure_current" in errors
+
+
+def test_derived_co2_outside_column_range_is_reported_on_pressure(session, yeast):
+    _, errors = form.save(session, _raw(yeast, pressure_current="9", temperature_fermentation="30"))
+    assert "pressure_current" in errors and "CO₂" in errors["pressure_current"]
+
+
+def test_live_calculation_includes_co2_current(session, yeast):
+    calculated = form.live_calculation(_raw(yeast, pressure_current="1,6"))
+    assert calculated.co2_current == D("5.3")
+
+
+def test_form_page_layout_for_new_and_existing_brews(client, session, yeast):
+    new_page = client.get("/protokoll/neu").text
+    assert 'name="alcohol_current"' not in new_page and 'name="co2_current"' not in new_page
+    assert "Löschen" not in new_page and "delete-form" not in new_page
+    legends = [part.split("</legend>")[0] for part in new_page.split("<legend>")[1:]]
+    assert legends[-2:] == ["Berechnete Werte", "Bewertung"]
+    assert "Karbonisierung" in legends and "Geschmack und Karbonisierung" not in legends
+
+    log, _ = form.save(session, _raw(yeast))
+    edit = client.get(f"/protokoll/{log.brewing_log_id}/bearbeiten").text
+    assert f'form="delete-form"' in edit and f'action="/protokoll/{log.brewing_log_id}/loeschen"' in edit
+    # The delete button sits in the action row after the cancel link.
+    assert edit.index("Abbrechen") < edit.index('form="delete-form"')
+    assert "hx-confirm" in edit
+
+
+def test_delete_via_edit_view_form(client, session, yeast):
+    log, _ = form.save(session, _raw(yeast))
+    response = client.post(f"/protokoll/{log.brewing_log_id}/loeschen")
+    assert "Sud gelöscht." in response.text
+    assert session.query(BrewingLog).count() == 0
